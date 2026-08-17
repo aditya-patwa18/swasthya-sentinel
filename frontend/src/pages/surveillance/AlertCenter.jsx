@@ -75,7 +75,21 @@ const AlertCenter = () => {
     fetchAlerts();
   }, []);
 
+  const applyStatusLocally = (alertId, newStatus) => {
+    const updated = alerts.map(a => a._id === alertId ? { ...a, status: newStatus } : a);
+    setAlerts(updated);
+    setSelectedAlert(prev => (prev && prev._id === alertId ? { ...prev, status: newStatus } : prev));
+    setCounts(countAlerts(updated));
+  };
+
   const handleUpdateStatus = async (alertId, newStatus) => {
+    // Demo/fallback alerts have no backend record — update local state
+    // directly so the UI is responsive even without a live database.
+    if (alertId.startsWith('demo-alert-')) {
+      applyStatusLocally(alertId, newStatus);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/alerts/${alertId}/status`, {
         method: 'PUT',
@@ -84,10 +98,7 @@ const AlertCenter = () => {
       });
       const data = await response.json();
       if (data.success) {
-        // Refresh alert list and sync selection
-        const updated = alerts.map(a => a._id === alertId ? { ...a, status: newStatus } : a);
-        setAlerts(updated);
-        setSelectedAlert({ ...selectedAlert, status: newStatus });
+        applyStatusLocally(alertId, newStatus);
         await fetchAlerts();
       }
     } catch (err) {
