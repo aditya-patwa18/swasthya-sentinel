@@ -20,6 +20,7 @@ import FacilitySignals from './pages/doctor/FacilitySignals';
 
 // Surveillance Pages
 import SurveillanceDashboard from './pages/surveillance/SurveillanceDashboard';
+import NationalStatistics from './pages/surveillance/NationalStatistics';
 import DiseaseTrends from './pages/surveillance/DiseaseTrends';
 import GeographicClusters from './pages/surveillance/GeographicClusters';
 import AMRWatch from './pages/surveillance/AMRWatch';
@@ -31,7 +32,7 @@ import FacilityDetail from './pages/surveillance/FacilityDetail';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
 const AppLayout = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
 
@@ -43,6 +44,18 @@ const AppLayout = () => {
   }, []);
 
   const isPublicRoute = ['/', '/login', '/signup', '/how-it-works'].includes(location.pathname);
+
+  // Wait for the auth check to resolve before deciding public vs. private
+  // layout — otherwise a hard refresh/direct link to a protected route
+  // briefly sees user === null and gets bounced to "/" before the token
+  // in localStorage has a chance to restore the session.
+  if (loading && !isPublicRoute) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#4a665e' }}>
+        Loading Swasthya Sentinel...
+      </div>
+    );
+  }
 
   if (isPublicRoute || !user) {
     return (
@@ -111,6 +124,11 @@ const AppLayout = () => {
             <Route path="/surveillance/trends" element={
               <ProtectedRoute allowedRoles={allRoles}>
                 <DiseaseTrends />
+              </ProtectedRoute>
+            } />
+            <Route path="/surveillance/statistics" element={
+              <ProtectedRoute allowedRoles={allRoles}>
+                <NationalStatistics />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/clusters" element={

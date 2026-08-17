@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, FileText, FileEdit, Radio, 
-  LineChart, Map, Pill, ShieldAlert, User, LogOut 
+import {
+  LayoutDashboard, FileText, FileEdit, Radio,
+  LineChart, Map, Pill, ShieldAlert, User, LogOut, BarChart3
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen }) => {
@@ -38,6 +38,7 @@ const Sidebar = ({ isOpen }) => {
     { path: '/surveillance/trends', name: 'Disease Trends', icon: <LineChart size={20} /> },
     { path: '/surveillance/clusters', name: 'Geographic Clusters', icon: <Map size={20} /> },
     { path: '/surveillance/amr', name: 'AMR Watch', icon: <Pill size={20} /> },
+    { path: '/surveillance/statistics', name: 'National Statistics', icon: <BarChart3 size={20} /> },
     { path: '/surveillance/alerts', name: 'Alerts', icon: <ShieldAlert size={20} /> }
   ];
 
