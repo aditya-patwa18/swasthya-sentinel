@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FlaskConical, PlusCircle, ShieldAlert } from 'lucide-react';
+import { FlaskConical, PlusCircle, ShieldAlert, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LabelList } from 'recharts';
+
+// Status colors (fixed, reused from the AMR Watch/dataviz palette) — never
+// impersonate a categorical series, always paired with a label/legend.
+const RESULT_COLORS = { Resistant: '#d03b3b', Susceptible: '#0ca30c', Intermediate: '#fab219' };
 
 // Fallback culture/AMR report log, used whenever the backend/database isn't
 // reachable (offline demo login, unseeded DB). Mirrors the lab panel seeded
@@ -43,6 +48,29 @@ const LabDashboard = () => {
   const resistantIsolates = reports.filter(r => r.resistance === 'Resistant').length;
   const resistanceRate = totalIsolates > 0 ? Math.round((resistantIsolates / totalIsolates) * 100) : 0;
 
+  // Pathogen frequency — how many isolates per organism
+  const pathogenFreq = useMemo(() => {
+    const counts = {};
+    reports.filter(r => r.pathogen).forEach(r => {
+      counts[r.pathogen] = (counts[r.pathogen] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([pathogen, count]) => ({ pathogen, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [reports]);
+
+  // Susceptibility breakdown — Resistant / Susceptible / Intermediate share
+  const susceptibilitySplit = useMemo(() => {
+    const counts = { Resistant: 0, Susceptible: 0, Intermediate: 0 };
+    reports.forEach(r => {
+      if (counts[r.resistance] !== undefined) counts[r.resistance]++;
+    });
+    return Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .map(([name, value]) => ({ name, value }));
+  }, [reports]);
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -70,6 +98,54 @@ const LabDashboard = () => {
         <div className="glass-card" style={styles.kpiCard}>
           <div style={{ ...styles.kpiVal, color: resistanceRate >= 50 ? '#dc2626' : '#ea580c' }}>{resistanceRate}%</div>
           <div style={styles.kpiTitle}>Resistance Rate</div>
+        </div>
+      </div>
+
+      {/* Infographics: pathogen frequency + susceptibility breakdown */}
+      <div style={styles.chartGrid}>
+        <div className="glass-card">
+          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.05rem', color: '#1b332a' }}>Isolates by Pathogen</h3>
+          <div style={{ width: '100%', height: 240 }}>
+            {pathogenFreq.length === 0 ? (
+              <div style={styles.emptyChart}>No isolate data yet.</div>
+            ) : (
+              <ResponsiveContainer>
+                <BarChart data={pathogenFreq} layout="vertical" margin={{ top: 5, right: 24, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e6efe8" horizontal={false} />
+                  <XAxis type="number" stroke="#789088" style={{ fontSize: '11px' }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="pathogen" stroke="#789088" width={140} style={{ fontSize: '10px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#d1dfd6', color: '#1b332a', fontSize: '12px', borderRadius: '6px' }} cursor={{ fill: 'rgba(15,118,110,0.06)' }} />
+                  <Bar dataKey="count" name="Isolates" fill="#0f766e" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                    <LabelList dataKey="count" position="right" style={{ fill: '#1b332a', fontSize: 11, fontWeight: 700 }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        <div className="glass-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <PieChartIcon size={16} color="#0f766e" />
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#1b332a' }}>Susceptibility Breakdown</h3>
+          </div>
+          <div style={{ width: '100%', height: 240 }}>
+            {susceptibilitySplit.length === 0 ? (
+              <div style={styles.emptyChart}>No sensitivity results yet.</div>
+            ) : (
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={susceptibilitySplit} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
+                    {susceptibilitySplit.map((entry) => (
+                      <Cell key={entry.name} fill={RESULT_COLORS[entry.name] || '#789088'} stroke="#ffffff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#d1dfd6', color: '#1b332a', fontSize: '12px', borderRadius: '6px' }} />
+                  <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
       </div>
 
@@ -134,7 +210,9 @@ const styles = {
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' },
   kpiCard: { textAlign: 'center', padding: '1.25rem 1rem' },
   kpiVal: { fontSize: '2rem', fontWeight: '800', color: '#0f766e', lineHeight: 1 },
-  kpiTitle: { fontSize: '0.8rem', fontWeight: '600', color: '#4a665e', marginTop: '0.35rem' }
+  kpiTitle: { fontSize: '0.8rem', fontWeight: '600', color: '#4a665e', marginTop: '0.35rem' },
+  chartGrid: { display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' },
+  emptyChart: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#789088', fontSize: '0.85rem' }
 };
 
 export default LabDashboard;
