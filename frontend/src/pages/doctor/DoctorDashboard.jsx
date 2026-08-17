@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { PlusCircle, ShieldAlert, FileText, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
+import { PlusCircle, ShieldAlert, FileText, CheckCircle, TrendingUp, AlertTriangle, Users } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+// Hardcoded patient roster for the facility's current queue — a lightweight
+// demo view of named patients since ClinicalReport stores anonymized
+// aggregate case counts, not individual patient records.
+const PATIENT_ROSTER = [
+  { name: 'Rohan Deshmukh', age: 34, gender: 'M', condition: 'Influenza-like Illness', status: 'Suspected', lastVisit: '2 hours ago' },
+  { name: 'Sunita Kadam', age: 58, gender: 'F', condition: 'Influenza-like Illness', status: 'Confirmed', lastVisit: '4 hours ago' },
+  { name: 'Aarav Mehta', age: 7, gender: 'M', condition: 'Acute Gastroenteritis', status: 'Suspected', lastVisit: 'Yesterday' },
+  { name: 'Fatima Sheikh', age: 29, gender: 'F', condition: 'Dengue Fever', status: 'Probable', lastVisit: 'Yesterday' },
+  { name: 'Vikram Joshi', age: 45, gender: 'M', condition: 'Urinary Tract Infection', status: 'Confirmed', lastVisit: '2 days ago' },
+  { name: 'Meera Iyer', age: 62, gender: 'F', condition: 'Influenza-like Illness', status: 'Confirmed', lastVisit: '2 days ago' }
+];
 
 const DoctorDashboard = () => {
   const { user, getAuthHeaders } = useAuth();
@@ -91,6 +103,49 @@ const DoctorDashboard = () => {
           <span>Submit Clinical Report</span>
         </button>
       </header>
+
+      {/* Patient Roster */}
+      <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <Users size={18} color="#3b82f6" />
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Today's Patient Queue</h3>
+        </div>
+        <div className="table-container">
+          <table className="custom-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Age / Gender</th>
+                <th>Condition</th>
+                <th>Status</th>
+                <th>Last Visit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PATIENT_ROSTER.map((p) => (
+                <tr key={p.name}>
+                  <td style={{ fontWeight: '600' }}>{p.name}</td>
+                  <td>{p.age} / {p.gender}</td>
+                  <td>{p.condition}</td>
+                  <td>
+                    <span style={{
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      backgroundColor: p.status === 'Confirmed' ? '#d1fae5' : p.status === 'Probable' ? '#dbeafe' : '#fef3c7',
+                      color: p.status === 'Confirmed' ? '#065f46' : p.status === 'Probable' ? '#1e40af' : '#92400e'
+                    }}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td style={{ color: '#64748b' }}>{p.lastVisit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* KPI Cards */}
       <div style={styles.kpiGrid}>
