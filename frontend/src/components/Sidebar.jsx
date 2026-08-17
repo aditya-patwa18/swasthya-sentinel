@@ -41,6 +41,13 @@ const Sidebar = ({ isOpen }) => {
     { path: '/surveillance/alerts', name: 'Alerts', icon: <ShieldAlert size={20} /> }
   ];
 
+  const profilePath =
+    user.role === 'admin'
+      ? '/admin/profile'
+      : user.role === 'doctor'
+        ? '/doctor/profile'
+        : '/surveillance/profile';
+
   return (
     <aside style={{
       ...styles.sidebar,
@@ -81,6 +88,10 @@ const Sidebar = ({ isOpen }) => {
       </div>
 
       <div style={styles.footer}>
+        <NavLink to={profilePath} style={linkStyle}>
+          <User size={20} />
+          <span>Profile & Access</span>
+        </NavLink>
         <button onClick={logout} style={styles.logoutBtn}>
           <LogOut size={16} />
           <span>Sign Out</span>

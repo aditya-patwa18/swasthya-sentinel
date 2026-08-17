@@ -4,13 +4,20 @@ import { useAuth } from '../context/AuthContext';
 import { KeyRound, Mail, AlertCircle, Sparkles } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, demoLogin } = useAuth();
   const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const goToRoleHome = (role) => {
+    if (role === 'doctor') navigate('/doctor');
+    else if (role === 'authority') navigate('/surveillance');
+    else if (role === 'admin') navigate('/admin');
+    else navigate('/doctor');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,19 +28,16 @@ const LoginPage = () => {
     setLoading(false);
 
     if (result.success) {
-      if (result.role === 'doctor') {
-        navigate('/doctor');
-      } else if (result.role === 'authority') {
-        navigate('/surveillance');
-      } else if (result.role === 'admin') {
-        navigate('/admin');
-      }
+      goToRoleHome(result.role);
     } else {
       setError(result.error || 'Login failed. Please check credentials.');
     }
   };
 
-  const handleDemoLogin = async (demoRole) => {
+  const handleDemoLogin = (demoRole) => {
+    setError('');
+    setLoading(true);
+
     let demoEmail = '';
     if (demoRole === 'doctor') demoEmail = 'doctor@epiwatch.org';
     else if (demoRole === 'authority') demoEmail = 'authority@epiwatch.gov.in';
@@ -41,16 +45,15 @@ const LoginPage = () => {
 
     setEmail(demoEmail);
     setPassword('password123');
-    setError('');
-    setLoading(true);
 
-    const result = await login(demoEmail, 'password123');
+    // Instant offline demo entry (MongoDB not required)
+    const result = demoLogin(demoRole);
     setLoading(false);
 
     if (result.success) {
-      navigate(`/${result.role}`);
+      goToRoleHome(result.role);
     } else {
-      setError(result.error);
+      setError(result.error || 'Demo login failed.');
     }
   };
 

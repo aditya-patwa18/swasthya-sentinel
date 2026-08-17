@@ -160,6 +160,11 @@ const AppLayout = () => {
                 <ProfilePage />
               </ProtectedRoute>
             } />
+            <Route path="/profile" element={
+              <ProtectedRoute allowedRoles={allRoles}>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
 
             <Route path="*" element={<Navigate to="/doctor" replace />} />
           </Routes>

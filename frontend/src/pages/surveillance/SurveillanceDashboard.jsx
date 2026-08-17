@@ -150,7 +150,11 @@ const SurveillanceDashboard = () => {
           </div>
 
           <div style={{ marginTop: '1rem' }}>
-            <IndiaMap hotspots={hotspots} onSelectState={(state) => navigate('/surveillance/clusters')} />
+            <IndiaMap
+              hotspots={hotspots}
+              mode={activeTab}
+              onSelectState={() => navigate('/surveillance/clusters')}
+            />
           </div>
         </div>
 

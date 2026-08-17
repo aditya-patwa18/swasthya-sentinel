@@ -25,6 +25,22 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      // Restore offline demo session without hitting the API
+      if (token.startsWith('demo-token-')) {
+        const cached = localStorage.getItem('demoUser');
+        if (cached) {
+          try {
+            setUser(JSON.parse(cached));
+          } catch {
+            logout();
+          }
+        } else {
+          logout();
+        }
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch('/api/auth/me', {
           headers: {
@@ -54,7 +70,7 @@ export const AuthProvider = ({ children }) => {
 
   // Periodically fetch notifications if logged in (every 25 seconds)
   useEffect(() => {
-    if (!token || !user) return;
+    if (!token || !user || token.startsWith('demo-token-')) return;
 
     const interval = setInterval(() => {
       fetchNotifications(token);
@@ -124,10 +140,74 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('demoUser');
     setToken('');
     setUser(null);
     setNotifications([]);
     setUnreadCount(0);
+  };
+
+  const demoAccounts = {
+    doctor: {
+      _id: 'demo-doctor',
+      name: 'Dr. Ananya Sharma',
+      email: 'doctor@epiwatch.org',
+      role: 'doctor',
+      phone: '+91 98765 43210',
+      department: 'General Medicine',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      facility: {
+        _id: 'demo-facility',
+        name: 'Sunrise Multispeciality Clinic',
+        city: 'Mumbai',
+        state: 'Maharashtra'
+      }
+    },
+    authority: {
+      _id: 'demo-authority',
+      name: 'Priya Nair',
+      email: 'authority@epiwatch.gov.in',
+      role: 'authority',
+      phone: '+91 98765 40001',
+      department: 'Epidemiology',
+      city: 'New Delhi',
+      state: 'Delhi'
+    },
+    admin: {
+      _id: 'demo-admin',
+      name: 'Platform Admin',
+      email: 'admin@epiwatch.gov.in',
+      role: 'admin',
+      phone: '+91 98765 40002',
+      department: 'Operations',
+      city: 'New Delhi',
+      state: 'Delhi'
+    }
+  };
+
+  // Instant hackathon demo login (works even if MongoDB is offline)
+  const demoLogin = (role) => {
+    const demoUser = demoAccounts[role];
+    if (!demoUser) return { success: false, error: 'Unknown demo role.' };
+
+    const demoToken = `demo-token-${role}`;
+    localStorage.setItem('token', demoToken);
+    localStorage.setItem('demoUser', JSON.stringify(demoUser));
+    setToken(demoToken);
+    setUser(demoUser);
+    setNotifications([
+      {
+        _id: 'demo-n1',
+        title: 'Welcome to Swasthya Sentinel',
+        message: `Signed in as ${demoUser.name} (demo mode).`,
+        type: 'system',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    setUnreadCount(1);
+    return { success: true, role: demoUser.role };
   };
 
   const updateProfile = async (profileData) => {
@@ -204,6 +284,7 @@ export const AuthProvider = ({ children }) => {
         notifications,
         unreadCount,
         login,
+        demoLogin,
         register,
         logout,
         updateProfile,
