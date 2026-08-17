@@ -8,7 +8,7 @@
     "server": "npm run dev --prefix backend",
     "client": "npm run dev --prefix frontend",
     "dev": "npx concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "build": "npm install --prefix frontend --include=dev && npm run build --prefix frontend && node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.cpSync('frontend/dist', 'dist', { recursive: true });\"",
+    "build": "npm install --prefix frontend && npm run build --prefix frontend && node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.cpSync('frontend/dist', 'dist', { recursive: true });\"",
     "start": "node backend/server.js"
   },
   "dependencies": {
