@@ -67,7 +67,7 @@ const SignUpPage = () => {
     if (formData.password.length < 6) {
       return setError('Password must be at least 6 characters long');
     }
-    if (formData.role === 'doctor' && !formData.facility) {
+    if ((formData.role === 'doctor' || formData.role === 'lab') && !formData.facility) {
       return setError('Please select a healthcare facility');
     }
 
@@ -119,6 +119,18 @@ const SignUpPage = () => {
             }}
           >
             Doctor / Clinician
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRoleChange('lab')}
+            style={{
+              ...styles.toggleBtn,
+              backgroundColor: formData.role === 'lab' ? '#1b4d3e' : 'transparent',
+              color: formData.role === 'lab' ? '#ffffff' : '#4a665e',
+              border: formData.role === 'lab' ? '1px solid #1b4d3e' : 'none'
+            }}
+          >
+            Lab / AMR Technician
           </button>
           <button
             type="button"
@@ -260,7 +272,7 @@ const SignUpPage = () => {
             </div>
           </div>
 
-          {formData.role === 'doctor' && (
+          {(formData.role === 'doctor' || formData.role === 'lab') && (
             <div style={styles.formRow}>
               <div className="form-group" style={{ flex: 1.2 }}>
                 <label className="form-label">Assigned Facility</label>

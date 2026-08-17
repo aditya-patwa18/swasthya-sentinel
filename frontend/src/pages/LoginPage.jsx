@@ -14,6 +14,7 @@ const LoginPage = () => {
 
   const goToRoleHome = (role) => {
     if (role === 'doctor') navigate('/doctor');
+    else if (role === 'lab') navigate('/lab');
     else if (role === 'authority') navigate('/surveillance');
     else if (role === 'admin') navigate('/admin');
     else navigate('/doctor');
@@ -40,6 +41,7 @@ const LoginPage = () => {
 
     let demoEmail = '';
     if (demoRole === 'doctor') demoEmail = 'doctor@epiwatch.org';
+    else if (demoRole === 'lab') demoEmail = 'lab@epiwatch.org';
     else if (demoRole === 'authority') demoEmail = 'authority@epiwatch.gov.in';
     else if (demoRole === 'admin') demoEmail = 'admin@epiwatch.gov.in';
 
@@ -128,6 +130,9 @@ const LoginPage = () => {
           <div style={styles.demoButtons}>
             <button onClick={() => handleDemoLogin('doctor')} style={styles.demoBtn}>
               Dr. Ananya (Doctor)
+            </button>
+            <button onClick={() => handleDemoLogin('lab')} style={styles.demoBtn}>
+              Kavita Rao (Lab Technician)
             </button>
             <button onClick={() => handleDemoLogin('authority')} style={styles.demoBtn}>
               Surveillance Officer

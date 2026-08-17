@@ -2,13 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Search, Calendar, Filter, FileText } from 'lucide-react';
 
+// Fallback report history, used whenever /api/reports returns nothing
+// (offline demo login, unseeded DB) so the search/filter UI has data to
+// actually query.
+const daysAgo = (d) => new Date(Date.now() - d * 24 * 60 * 60 * 1000).toISOString();
+const FALLBACK_REPORTS = [
+  { _id: 'demo-hist-mumbai-ili01', reportDate: daysAgo(1), department: 'General Medicine', chiefComplaint: 'Acute onset of high fever and severe dry cough', suspectedCondition: 'Influenza-like Illness', diseaseCategory: 'Respiratory', patientCount: 8, diagnosisStatus: 'Suspected', labPerformed: true, resistance: 'None', pathogen: '' },
+  { _id: 'demo-hist-mumbai-ili02', reportDate: daysAgo(3), department: 'General Medicine', chiefComplaint: 'Cough, fatigue, and mild fever', suspectedCondition: 'Influenza-like Illness', diseaseCategory: 'Respiratory', patientCount: 12, diagnosisStatus: 'Confirmed', labPerformed: true, resistance: 'None', pathogen: '' },
+  { _id: 'demo-hist-uti-ecoli003', reportDate: daysAgo(5), department: 'Urology', chiefComplaint: 'Burning micturition and lower abdominal pain', suspectedCondition: 'Urinary Tract Infection', diseaseCategory: 'Gastrointestinal', patientCount: 1, diagnosisStatus: 'Confirmed', labPerformed: true, resistance: 'Resistant', pathogen: 'E. coli' },
+  { _id: 'demo-hist-dengue-004', reportDate: daysAgo(6), department: 'Outpatient', chiefComplaint: 'Presents with acute fever symptoms', suspectedCondition: 'Dengue Fever', diseaseCategory: 'Fever', patientCount: 2, diagnosisStatus: 'Suspected', labPerformed: false, resistance: 'None', pathogen: '' },
+  { _id: 'demo-hist-gastro-0005', reportDate: daysAgo(8), department: 'Outpatient', chiefComplaint: 'Presents with acute gastrointestinal symptoms', suspectedCondition: 'Acute Gastroenteritis', diseaseCategory: 'Gastrointestinal', patientCount: 3, diagnosisStatus: 'Confirmed', labPerformed: true, resistance: 'None', pathogen: '' },
+  { _id: 'demo-hist-ili-baseln6', reportDate: daysAgo(12), department: 'General Medicine', chiefComplaint: 'Cough and running nose', suspectedCondition: 'Influenza-like Illness', diseaseCategory: 'Respiratory', patientCount: 2, diagnosisStatus: 'Suspected', labPerformed: false, resistance: 'None', pathogen: '' },
+  { _id: 'demo-hist-neuro-00007', reportDate: daysAgo(15), department: 'Outpatient', chiefComplaint: 'Headache, stiff neck, and fever', suspectedCondition: 'Aseptic Meningitis', diseaseCategory: 'Neurological', patientCount: 1, diagnosisStatus: 'Suspected', labPerformed: true, resistance: 'None', pathogen: '' },
+  { _id: 'demo-hist-skin-scab08', reportDate: daysAgo(20), department: 'Outpatient', chiefComplaint: 'Presents with acute skin symptoms', suspectedCondition: 'Scabies', diseaseCategory: 'Skin', patientCount: 2, diagnosisStatus: 'Confirmed', labPerformed: false, resistance: 'None', pathogen: '' }
+];
+
 const ReportHistory = () => {
   const { getAuthHeaders } = useAuth();
-  
-  const [reports, setReports] = useState([]);
-  const [filteredReports, setFilteredReports] = useState([]);
+
+  const [reports, setReports] = useState(FALLBACK_REPORTS);
+  const [filteredReports, setFilteredReports] = useState(FALLBACK_REPORTS);
   const [loading, setLoading] = useState(true);
-  
+
   // Filter States
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
@@ -21,12 +36,12 @@ const ReportHistory = () => {
           headers: getAuthHeaders()
         });
         const data = await response.json();
-        if (data.success) {
+        if (data.success && data.reports?.length > 0) {
           setReports(data.reports);
           setFilteredReports(data.reports);
         }
       } catch (err) {
-        console.error('Error fetching clinical reports history:', err);
+        console.error('Error fetching clinical reports history, using demo dataset:', err);
       } finally {
         setLoading(false);
       }

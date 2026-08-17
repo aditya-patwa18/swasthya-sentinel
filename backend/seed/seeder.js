@@ -143,6 +143,18 @@ const runSeeder = async () => {
         isActive: true
       },
       {
+        name: 'Kavita Rao',
+        email: 'lab@epiwatch.org',
+        password: hashedPassword,
+        role: 'lab',
+        phone: '+91 98765 43220',
+        facility: facilities[8]._id, // Karnataka Apex Lab, Dharwad
+        department: 'Microbiology Lab',
+        city: 'Dharwad',
+        state: 'Karnataka',
+        isActive: true
+      },
+      {
         name: 'Rajeev Chandrasekhar',
         email: 'authority@epiwatch.gov.in',
         password: hashedPassword,
@@ -174,7 +186,8 @@ const runSeeder = async () => {
     const drRajesh = users[4];
     const drPriya = users[5];
     const drRamakrishnan = users[6];
-    const authorityUser = users[7];
+    const labKavita = users[7];
+    const authorityUser = users[8];
 
     // 4. Create Historical & Recent Reports (100+)
     const reportsData = [];
@@ -300,6 +313,45 @@ const runSeeder = async () => {
       });
     }
 
+    // --- MOCK SCENARIO 2b: LAB-SUBMITTED AMR ISOLATES (Kavita Rao, Karnataka Apex Lab) ---
+    // Broader pathogen panel so AMR Watch shows more than one organism/antibiotic pair.
+    const labPanel = [
+      { pathogen: 'Klebsiella pneumoniae', antibiotic: 'Ceftriaxone', class: 'Cephalosporins', resistant: true, sus: 'Meropenem, Amikacin' },
+      { pathogen: 'Klebsiella pneumoniae', antibiotic: 'Meropenem', class: 'Other', resistant: false, sus: '' },
+      { pathogen: 'Acinetobacter baumannii', antibiotic: 'Meropenem', class: 'Other', resistant: true, sus: 'Colistin' },
+      { pathogen: 'Staphylococcus aureus', antibiotic: 'Amoxicillin', class: 'Penicillins', resistant: true, sus: 'Vancomycin' },
+      { pathogen: 'Staphylococcus aureus', antibiotic: 'Ciprofloxacin', class: 'Fluoroquinolones', resistant: false, sus: '' },
+      { pathogen: 'Pseudomonas aeruginosa', antibiotic: 'Ceftazidime', class: 'Cephalosporins', resistant: true, sus: 'Meropenem, Amikacin' },
+      { pathogen: 'Salmonella Typhi', antibiotic: 'Ciprofloxacin', class: 'Fluoroquinolones', resistant: true, sus: 'Ceftriaxone' }
+    ];
+    labPanel.forEach((p, i) => {
+      reportsData.push({
+        reportingDoctor: labKavita._id,
+        facility: facilities[8]._id, // Karnataka Apex Lab
+        reportDate: daysAgo(i + 1),
+        department: 'Microbiology Lab',
+        chiefComplaint: 'Culture and sensitivity referral',
+        symptoms: ['Fever'],
+        symptomDuration: 3,
+        patientCount: 1,
+        ageGroup: 'Adult (19-60)',
+        area: 'Dharwad', city: 'Dharwad', district: 'Dharwad', state: 'Karnataka',
+        diseaseCategory: 'Other',
+        suspectedCondition: 'Suspected Infection',
+        diagnosisStatus: 'Confirmed',
+        confirmedDiagnosis: `${p.pathogen} infection`,
+        labPerformed: true,
+        testName: 'Culture & Sensitivity',
+        testResult: `Growth of ${p.pathogen}`,
+        cultureResult: `${p.pathogen} isolated`,
+        pathogen: p.pathogen,
+        antibioticPrescribed: true,
+        antibioticName: p.antibiotic,
+        antibioticClass: p.class,
+        resistance: p.resistant ? 'Resistant' : 'Susceptible',
+        susceptibility: p.sus
+      });
+    });
 
     // --- GENERAL PROTO-DATA: NATIONWIDE SPORADIC CASES ---
     // Seed general cases for other states (Delhi, Gujarat, Kerala, Tamil Nadu, Rajasthan)
@@ -407,6 +459,39 @@ const runSeeder = async () => {
         detectedAt: daysAgo(10),
         acknowledgedAt: daysAgo(9),
         resolvedAt: daysAgo(1)
+      },
+      {
+        type: 'AMR Signal',
+        condition: 'Carbapenem-Resistant Acinetobacter baumannii',
+        region: 'Dharwad, Karnataka',
+        state: 'Karnataka',
+        district: 'Dharwad',
+        baselineValue: 2,
+        currentValue: 4,
+        percentageIncrease: 100,
+        facilityCount: 1,
+        confidenceScore: 71,
+        riskLevel: 'High',
+        reason: 'Karnataka Apex Lab reports carbapenem resistance in Acinetobacter baumannii isolates, consistent with the national ICMR AMRSN trend (88% resistance, 2023).',
+        status: 'New',
+        detectedAt: daysAgo(1)
+      },
+      {
+        type: 'Disease Cluster',
+        condition: 'Acute Gastroenteritis',
+        region: 'Chennai Metropolitan Region',
+        state: 'Tamil Nadu',
+        district: 'Chennai',
+        baselineValue: 6,
+        currentValue: 15,
+        percentageIncrease: 150,
+        facilityCount: 1,
+        confidenceScore: 64,
+        riskLevel: 'Elevated',
+        reason: 'Acute Gastroenteritis activity is 150% above baseline in Chennai, reported by Chennai Central Hospital over the past week.',
+        status: 'Under Investigation',
+        detectedAt: daysAgo(4),
+        acknowledgedAt: daysAgo(3)
       }
     ];
 

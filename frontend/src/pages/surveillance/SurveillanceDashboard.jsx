@@ -1,8 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import IndiaMap from '../../components/IndiaMap';
-import { PlusCircle, FileText, TrendingUp, AlertTriangle, MapPin, Radio, ShieldAlert } from 'lucide-react';
+import { PlusCircle, FileText, TrendingUp, AlertTriangle, MapPin, Radio } from 'lucide-react';
+import { ResponsiveContainer, AreaChart, Area } from 'recharts';
+
+// Deterministic 7-point sparkline seeded from a base value, so each KPI card
+// gets a distinct-looking trend without extra API calls.
+const sparkData = (base, growth) => Array.from({ length: 7 }, (_, i) => ({
+  v: Math.max(1, Math.round(base * (1 + growth * (i / 6)) * (0.92 + 0.16 * Math.sin(i * 1.7))))
+}));
+
+const Sparkline = ({ data, color }) => (
+  <div style={{ width: '100%', height: 32 }}>
+    <ResponsiveContainer>
+      <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`spark-${color}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#spark-${color})`} dot={false} isAnimationActive={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+);
 
 const SurveillanceDashboard = () => {
   const { getAuthHeaders } = useAuth();
@@ -48,6 +71,11 @@ const SurveillanceDashboard = () => {
     fetchSurveillanceData();
   }, []);
 
+  const facilitiesSpark = useMemo(() => sparkData(kpis.participatingFacilities * 0.9, 0.08), [kpis.participatingFacilities]);
+  const reportsSpark = useMemo(() => sparkData(kpis.reportsToday * 0.85, 0.14), [kpis.reportsToday]);
+  const signalsSpark = useMemo(() => sparkData(Math.max(4, kpis.activeSignals * 0.7), 0.3), [kpis.activeSignals]);
+  const alertsSpark = useMemo(() => sparkData(Math.max(2, kpis.activeAlerts * 0.6), 0.25), [kpis.activeAlerts]);
+
   const emergingSignalsData = [
     { priority: 'Critical', time: '2h ago', condition: 'Respiratory illness cluster', location: 'Mumbai Metropolitan Region', confidence: 'High (92%)', deviation: '+38% baseline', isCritical: true },
     { priority: 'High', time: '4h ago', condition: 'Atypical fever spike', location: 'Pune Metropolitan Region', confidence: 'Medium (78%)', deviation: '+22% baseline', isCritical: false },
@@ -68,42 +96,52 @@ const SurveillanceDashboard = () => {
       <div style={styles.kpiRow}>
         {/* Card 1 */}
         <div className="glass-card" style={styles.kpiCard}>
-          <div style={styles.kpiCardLeft}>
-            <span style={styles.kpiLabel}>FACILITIES REPORTING</span>
-            <div style={styles.kpiValue}>{kpis.participatingFacilities.toLocaleString()}</div>
-            <span style={styles.kpiSubGreen}>↑ 6.2% vs yesterday</span>
+          <div style={styles.kpiCardTop}>
+            <div style={styles.kpiCardLeft}>
+              <span style={styles.kpiLabel}>FACILITIES REPORTING</span>
+              <div style={styles.kpiValue}>{kpis.participatingFacilities.toLocaleString()}</div>
+              <span style={styles.kpiSubGreen}>↑ 6.2% vs yesterday</span>
+            </div>
+            <div style={{ ...styles.kpiIconBox, backgroundColor: '#d1fae5', color: '#065f46' }}>
+              <PlusCircle size={20} />
+            </div>
           </div>
-          <div style={{ ...styles.kpiIconBox, backgroundColor: '#d1fae5', color: '#065f46' }}>
-            <PlusCircle size={20} />
-          </div>
+          <Sparkline data={facilitiesSpark} color="#10b981" />
         </div>
 
         {/* Card 2 */}
         <div className="glass-card" style={styles.kpiCard}>
-          <div style={styles.kpiCardLeft}>
-            <span style={styles.kpiLabel}>REPORTS TODAY</span>
-            <div style={styles.kpiValue}>{kpis.reportsToday.toLocaleString()}</div>
-            <span style={styles.kpiSubGreen}>↑ 11.4% vs avg</span>
+          <div style={styles.kpiCardTop}>
+            <div style={styles.kpiCardLeft}>
+              <span style={styles.kpiLabel}>REPORTS TODAY</span>
+              <div style={styles.kpiValue}>{kpis.reportsToday.toLocaleString()}</div>
+              <span style={styles.kpiSubGreen}>↑ 11.4% vs avg</span>
+            </div>
+            <div style={{ ...styles.kpiIconBox, backgroundColor: '#dbeafe', color: '#1e40af' }}>
+              <FileText size={20} />
+            </div>
           </div>
-          <div style={{ ...styles.kpiIconBox, backgroundColor: '#dbeafe', color: '#1e40af' }}>
-            <FileText size={20} />
-          </div>
+          <Sparkline data={reportsSpark} color="#2563eb" />
         </div>
 
         {/* Card 3 */}
         <div className="glass-card" style={styles.kpiCard}>
-          <div style={styles.kpiCardLeft}>
-            <span style={styles.kpiLabel}>EMERGING SIGNALS</span>
-            <div style={styles.kpiValue}>{kpis.activeSignals}</div>
-            <span style={styles.kpiSubOrange}>● 4 high priority</span>
+          <div style={styles.kpiCardTop}>
+            <div style={styles.kpiCardLeft}>
+              <span style={styles.kpiLabel}>EMERGING SIGNALS</span>
+              <div style={styles.kpiValue}>{kpis.activeSignals}</div>
+              <span style={styles.kpiSubOrange}>● 4 high priority</span>
+            </div>
+            <div style={{ ...styles.kpiIconBox, backgroundColor: '#ffedd5', color: '#9a3412' }}>
+              <TrendingUp size={20} />
+            </div>
           </div>
-          <div style={{ ...styles.kpiIconBox, backgroundColor: '#ffedd5', color: '#9a3412' }}>
-            <TrendingUp size={20} />
-          </div>
+          <Sparkline data={signalsSpark} color="#ea580c" />
         </div>
 
         {/* Card 4 (Red alert Card) */}
         <div className="glass-card" style={{ ...styles.kpiCard, borderColor: '#fca5a5', boxShadow: '0 0 10px rgba(220,38,38,0.05)' }}>
+          <div style={styles.kpiCardTop}>
           <div style={styles.kpiCardLeft}>
             <span style={{ ...styles.kpiLabel, color: '#dc2626' }}>ACTIVE ALERTS</span>
             <div style={{ ...styles.kpiValue, color: '#dc2626' }}>{kpis.activeAlerts}</div>
@@ -112,6 +150,8 @@ const SurveillanceDashboard = () => {
           <div style={{ ...styles.kpiIconBox, backgroundColor: '#fee2e2', color: '#b91c1c' }}>
             <AlertTriangle size={20} />
           </div>
+          </div>
+          <Sparkline data={alertsSpark} color="#dc2626" />
         </div>
       </div>
 
@@ -230,6 +270,11 @@ const styles = {
   },
   kpiCard: {
     padding: '1.25rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem'
+  },
+  kpiCardTop: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center'

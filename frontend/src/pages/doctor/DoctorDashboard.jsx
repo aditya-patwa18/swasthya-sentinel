@@ -1,8 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { PlusCircle, ShieldAlert, FileText, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
+import { PlusCircle, ShieldAlert, FileText, CheckCircle, TrendingUp, AlertTriangle, Users } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+// Fallback 7-day disease activity trend, used when /api/surveillance/trends
+// returns nothing (offline demo login, unseeded DB).
+const FALLBACK_TRENDS = (() => {
+  const days = 7;
+  const now = new Date();
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(now.getTime() - (days - 1 - i) * 24 * 60 * 60 * 1000);
+    const wave = Math.sin(i * 0.8);
+    return {
+      date: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+      Respiratory: Math.max(2, Math.round(9 + wave * 3 + i * 0.6)),
+      Fever: Math.max(1, Math.round(5 + Math.cos(i * 0.6) * 2)),
+      Gastrointestinal: Math.max(1, Math.round(4 + Math.sin(i * 0.4) * 1.5))
+    };
+  });
+})();
+
+// Hardcoded facility-relevant outbreak alerts shown in the sidebar warning
+// box — mirrors the seeded alert scenarios (Mumbai ILI cluster, Karnataka
+// AMR signal, Delhi dengue cluster) so doctors see context-relevant warnings.
+const DOCTOR_ALERTS = [
+  {
+    title: 'Influenza-like Illness Outbreak Warning',
+    text: 'Public health authorities have triggered an alert for elevated respiratory activity in the Mumbai Metropolitan Region. Request cultures / Rapid Antigen Tests for qualifying cases.',
+    level: 'Critical'
+  },
+  {
+    title: 'AMR Signal — E. coli Reduced Susceptibility',
+    text: 'Karnataka Apex Lab reports rising Ciprofloxacin resistance in E. coli urinary isolates. Consider culture-guided prescribing for suspected UTIs.',
+    level: 'High'
+  },
+  {
+    title: 'Dengue Fever Cluster (Resolved)',
+    text: 'Delhi Central Wards cluster has been resolved after vector control intervention. Continue routine reporting for febrile illness.',
+    level: 'Resolved'
+  }
+];
+
+// Hardcoded patient roster for the facility's current queue — a lightweight
+// demo view of named patients since ClinicalReport stores anonymized
+// aggregate case counts, not individual patient records.
+const PATIENT_ROSTER = [
+  { name: 'Rohan Deshmukh', age: 34, gender: 'M', condition: 'Influenza-like Illness', status: 'Suspected', lastVisit: '2 hours ago' },
+  { name: 'Sunita Kadam', age: 58, gender: 'F', condition: 'Influenza-like Illness', status: 'Confirmed', lastVisit: '4 hours ago' },
+  { name: 'Aarav Mehta', age: 7, gender: 'M', condition: 'Acute Gastroenteritis', status: 'Suspected', lastVisit: 'Yesterday' },
+  { name: 'Fatima Sheikh', age: 29, gender: 'F', condition: 'Dengue Fever', status: 'Probable', lastVisit: 'Yesterday' },
+  { name: 'Vikram Joshi', age: 45, gender: 'M', condition: 'Urinary Tract Infection', status: 'Confirmed', lastVisit: '2 days ago' },
+  { name: 'Meera Iyer', age: 62, gender: 'F', condition: 'Influenza-like Illness', status: 'Confirmed', lastVisit: '2 days ago' }
+];
 
 const DoctorDashboard = () => {
   const { user, getAuthHeaders } = useAuth();
@@ -14,7 +64,7 @@ const DoctorDashboard = () => {
     activeConditions: 0,
     facilityAlerts: 0
   });
-  const [trends, setTrends] = useState([]);
+  const [trends, setTrends] = useState(FALLBACK_TRENDS);
   const [recentReports, setRecentReports] = useState([]);
   const [signals, setSignals] = useState([]);
 
@@ -65,11 +115,11 @@ const DoctorDashboard = () => {
           ]);
         }
 
-        if (trendsData.success) {
+        if (trendsData.success && trendsData.trends?.length > 0) {
           setTrends(trendsData.trends);
         }
       } catch (err) {
-        console.error('Error fetching doctor dashboard data:', err);
+        console.error('Error fetching doctor dashboard data, using demo dataset:', err);
       }
     };
 
@@ -91,6 +141,49 @@ const DoctorDashboard = () => {
           <span>Submit Clinical Report</span>
         </button>
       </header>
+
+      {/* Patient Roster */}
+      <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <Users size={18} color="#3b82f6" />
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Today's Patient Queue</h3>
+        </div>
+        <div className="table-container">
+          <table className="custom-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Age / Gender</th>
+                <th>Condition</th>
+                <th>Status</th>
+                <th>Last Visit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PATIENT_ROSTER.map((p) => (
+                <tr key={p.name}>
+                  <td style={{ fontWeight: '600' }}>{p.name}</td>
+                  <td>{p.age} / {p.gender}</td>
+                  <td>{p.condition}</td>
+                  <td>
+                    <span style={{
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      backgroundColor: p.status === 'Confirmed' ? '#d1fae5' : p.status === 'Probable' ? '#dbeafe' : '#fef3c7',
+                      color: p.status === 'Confirmed' ? '#065f46' : p.status === 'Probable' ? '#1e40af' : '#92400e'
+                    }}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td style={{ color: '#64748b' }}>{p.lastVisit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* KPI Cards */}
       <div style={styles.kpiGrid}>
@@ -228,12 +321,26 @@ const DoctorDashboard = () => {
               <AlertTriangle size={18} color="#d97706" />
               <h3 style={{ margin: 0, fontSize: '1rem', color: '#92400e' }}>Active Outbreak Alerts</h3>
             </div>
-            <p style={{ fontSize: '0.825rem', color: '#b45309', lineHeight: '1.4', marginBottom: '0.75rem' }}>
-              <strong>Influenza-like Illness Outbreak Warning:</strong> Public health authorities have triggered an alert for elevated respiratory activity in the Mumbai Metropolitan Region.
-            </p>
-            <p style={{ fontSize: '0.825rem', color: '#b45309', lineHeight: '1.4', margin: 0 }}>
-              Please request cultures / Rapid Antigen Tests for qualifying cases, and record lab findings in Step 3 of the report form.
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {DOCTOR_ALERTS.map((a) => (
+                <div key={a.title} style={{
+                  borderLeft: `3px solid ${a.level === 'Critical' ? '#dc2626' : a.level === 'High' ? '#ea580c' : '#10b981'}`,
+                  paddingLeft: '0.65rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
+                    <strong style={{ fontSize: '0.825rem', color: '#92400e' }}>{a.title}</strong>
+                    <span style={{
+                      fontSize: '0.65rem', fontWeight: 800, padding: '0.05rem 0.4rem', borderRadius: 4, textTransform: 'uppercase',
+                      color: a.level === 'Critical' ? '#dc2626' : a.level === 'High' ? '#ea580c' : '#065f46',
+                      backgroundColor: a.level === 'Critical' ? '#fee2e2' : a.level === 'High' ? '#ffedd5' : '#d1fae5'
+                    }}>
+                      {a.level}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#b45309', lineHeight: '1.4', margin: 0 }}>{a.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

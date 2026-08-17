@@ -164,6 +164,22 @@ export const AuthProvider = ({ children }) => {
         state: 'Maharashtra'
       }
     },
+    lab: {
+      _id: 'demo-lab',
+      name: 'Kavita Rao',
+      email: 'lab@epiwatch.org',
+      role: 'lab',
+      phone: '+91 98765 43220',
+      department: 'Microbiology Lab',
+      city: 'Hubli',
+      state: 'Karnataka',
+      facility: {
+        _id: 'demo-facility-lab',
+        name: 'Karnataka Apex Lab',
+        city: 'Dharwad',
+        state: 'Karnataka'
+      }
+    },
     authority: {
       _id: 'demo-authority',
       name: 'Priya Nair',

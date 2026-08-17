@@ -77,35 +77,45 @@ const IndiaMap = ({ hotspots = [], onSelectState, mode = 'Clusters' }) => {
             const radius = mode === 'Intensity'
               ? Math.max(8, Math.min(28, 6 + st.caseCount / 3))
               : st.activeAlertsCount > 0 ? 14 : 10;
+            const isHot = st.riskLevel === 'Critical' || st.riskLevel === 'High';
 
             return (
-              <CircleMarker
-                key={st.state}
-                center={[st.lat, st.lng]}
-                pathOptions={{
-                  color: '#ffffff',
-                  weight: 2,
-                  fillColor: color,
-                  fillOpacity: 0.85
-                }}
-                radius={radius}
-                eventHandlers={{ click: () => handleSelect(st) }}
-              >
-                <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
-                  <strong>{st.state}</strong> · {st.caseCount} cases
-                </Tooltip>
-                <Popup>
-                  <div style={{ minWidth: 160 }}>
-                    <strong style={{ color: '#1b332a' }}>{st.state}</strong>
-                    <div style={{ fontSize: 12, color: '#4a665e', marginTop: 4 }}>
-                      {st.city} · {st.riskLevel} risk
+              <React.Fragment key={st.state}>
+                {isHot && (
+                  <CircleMarker
+                    center={[st.lat, st.lng]}
+                    pathOptions={{ color, weight: 1, fillColor: color, fillOpacity: 0.18, className: 'pulse-ring' }}
+                    radius={radius + 10}
+                    interactive={false}
+                  />
+                )}
+                <CircleMarker
+                  center={[st.lat, st.lng]}
+                  pathOptions={{
+                    color: '#ffffff',
+                    weight: 2,
+                    fillColor: color,
+                    fillOpacity: 0.9
+                  }}
+                  radius={radius}
+                  eventHandlers={{ click: () => handleSelect(st) }}
+                >
+                  <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
+                    <strong>{st.state}</strong> · {st.caseCount} cases
+                  </Tooltip>
+                  <Popup>
+                    <div style={{ minWidth: 160 }}>
+                      <strong style={{ color: '#1b332a' }}>{st.state}</strong>
+                      <div style={{ fontSize: 12, color: '#4a665e', marginTop: 4 }}>
+                        {st.city} · {st.riskLevel} risk
+                      </div>
+                      <div style={{ fontSize: 12, marginTop: 6 }}>
+                        Cases: <strong>{st.caseCount}</strong> · Alerts: <strong>{st.activeAlertsCount}</strong>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12, marginTop: 6 }}>
-                      Cases: <strong>{st.caseCount}</strong> · Alerts: <strong>{st.activeAlertsCount}</strong>
-                    </div>
-                  </div>
-                </Popup>
-              </CircleMarker>
+                  </Popup>
+                </CircleMarker>
+              </React.Fragment>
             );
           })}
         </MapContainer>

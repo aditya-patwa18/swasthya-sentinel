@@ -1,14 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, FileText, FileEdit, Radio, 
-  LineChart, Map, Pill, ShieldAlert, User, LogOut 
+import {
+  LayoutDashboard, FileText, FileEdit, Radio,
+  LineChart, Map, Pill, ShieldAlert, User, LogOut, BarChart3, FlaskConical
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen }) => {
   const { user, logout } = useAuth();
-  
+
   if (!user) return null;
 
   const linkStyle = ({ isActive }) => ({
@@ -26,11 +26,15 @@ const Sidebar = ({ isOpen }) => {
     transition: 'all 0.2s ease-in-out'
   });
 
-  // Unified list of links that are visible for seamless demo flow
   const clinicalLinks = [
     { path: '/doctor', name: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
     { path: '/doctor/records', name: 'Patient Records', icon: <FileText size={20} /> },
     { path: '/doctor/submit', name: 'Submit Report', icon: <FileEdit size={20} /> }
+  ];
+
+  const labLinks = [
+    { path: '/lab', name: 'Lab Dashboard', icon: <LayoutDashboard size={20} /> },
+    { path: '/lab/submit', name: 'Submit AMR Report', icon: <FlaskConical size={20} /> }
   ];
 
   const surveillanceLinks = [
@@ -38,15 +42,29 @@ const Sidebar = ({ isOpen }) => {
     { path: '/surveillance/trends', name: 'Disease Trends', icon: <LineChart size={20} /> },
     { path: '/surveillance/clusters', name: 'Geographic Clusters', icon: <Map size={20} /> },
     { path: '/surveillance/amr', name: 'AMR Watch', icon: <Pill size={20} /> },
+    { path: '/surveillance/statistics', name: 'National Statistics', icon: <BarChart3 size={20} /> },
     { path: '/surveillance/alerts', name: 'Alerts', icon: <ShieldAlert size={20} /> }
   ];
+
+  // Each role sees only its own workspace — doctors and lab techs never see
+  // the national Surveillance Center; only authority/admin do.
+  const showClinical = user.role === 'doctor';
+  const showLab = user.role === 'lab';
+  const showSurveillance = user.role === 'authority' || user.role === 'admin';
 
   const profilePath =
     user.role === 'admin'
       ? '/admin/profile'
       : user.role === 'doctor'
         ? '/doctor/profile'
-        : '/surveillance/profile';
+        : user.role === 'lab'
+          ? '/lab/profile'
+          : '/surveillance/profile';
+
+  const roleLabel =
+    user.role === 'doctor' ? `Clinician: ${user.name}`
+      : user.role === 'lab' ? `Lab Technician: ${user.name}`
+        : `Surveillance Officer: ${user.name}`;
 
   return (
     <aside style={{
@@ -55,36 +73,47 @@ const Sidebar = ({ isOpen }) => {
     }}>
       <div style={styles.header}>
         <span style={styles.title}>SWASTHYA SENTINEL</span>
-        <div style={styles.roleSubtitle}>
-          {user.role === 'doctor' ? `Clinician: ${user.name}` : `Surveillance Officer: ${user.name}`}
-        </div>
+        <div style={styles.roleSubtitle}>{roleLabel}</div>
       </div>
-      
+
       <div style={styles.linksContainer}>
-        {/* CLINICAL SECTION */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          {clinicalLinks.map((link) => (
-            <NavLink key={link.path} to={link.path} style={linkStyle}>
-              {link.icon}
-              <span>{link.name}</span>
-            </NavLink>
-          ))}
-        </div>
+        {showClinical && (
+          <div>
+            {clinicalLinks.map((link) => (
+              <NavLink key={link.path} to={link.path} style={linkStyle}>
+                {link.icon}
+                <span>{link.name}</span>
+              </NavLink>
+            ))}
+          </div>
+        )}
 
-        {/* SURVEILLANCE CENTER HEADER */}
-        <div style={styles.sectionDivider}>
-          <span style={styles.sectionHeader}>SURVEILLANCE CENTER</span>
-        </div>
+        {showLab && (
+          <div>
+            {labLinks.map((link) => (
+              <NavLink key={link.path} to={link.path} style={linkStyle}>
+                {link.icon}
+                <span>{link.name}</span>
+              </NavLink>
+            ))}
+          </div>
+        )}
 
-        {/* SURVEILLANCE SECTION */}
-        <div>
-          {surveillanceLinks.map((link) => (
-            <NavLink key={link.path} to={link.path} style={linkStyle}>
-              {link.icon}
-              <span>{link.name}</span>
-            </NavLink>
-          ))}
-        </div>
+        {showSurveillance && (
+          <>
+            <div style={styles.sectionDivider}>
+              <span style={styles.sectionHeader}>SURVEILLANCE CENTER</span>
+            </div>
+            <div>
+              {surveillanceLinks.map((link) => (
+                <NavLink key={link.path} to={link.path} style={linkStyle}>
+                  {link.icon}
+                  <span>{link.name}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div style={styles.footer}>

@@ -3,21 +3,55 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, CheckCircle, Radio, Search, Filter, MapPin, X, ArrowRight } from 'lucide-react';
 
+// Fallback alert list, used whenever /api/alerts returns nothing (offline
+// demo login, unseeded DB). Mirrors the scenarios seeded in the backend
+// (Mumbai ILI cluster, Karnataka AMR signals, Chennai gastro cluster,
+// resolved Delhi dengue cluster) so the Alert Center is never empty.
+const daysAgo = (d) => new Date(Date.now() - d * 24 * 60 * 60 * 1000).toISOString();
+const FALLBACK_ALERTS = [
+  {
+    _id: 'demo-alert-mumbai-ili01', type: 'Disease Cluster', condition: 'Influenza-like Illness',
+    region: 'Mumbai Metropolitan Region', state: 'Maharashtra', district: 'Mumbai City',
+    facilityCount: 4, confidenceScore: 92, riskLevel: 'Critical', status: 'New', detectedAt: daysAgo(2)
+  },
+  {
+    _id: 'demo-alert-karn-ecoli02', type: 'AMR Signal', condition: 'Reduced Susceptibility — E. coli',
+    region: 'Dharwad, Karnataka', state: 'Karnataka', district: 'Dharwad',
+    facilityCount: 2, confidenceScore: 78, riskLevel: 'High', status: 'Under Investigation', detectedAt: daysAgo(3)
+  },
+  {
+    _id: 'demo-alert-karn-abau003', type: 'AMR Signal', condition: 'Carbapenem-Resistant Acinetobacter baumannii',
+    region: 'Dharwad, Karnataka', state: 'Karnataka', district: 'Dharwad',
+    facilityCount: 1, confidenceScore: 71, riskLevel: 'High', status: 'New', detectedAt: daysAgo(1)
+  },
+  {
+    _id: 'demo-alert-chen-gastro4', type: 'Disease Cluster', condition: 'Acute Gastroenteritis',
+    region: 'Chennai Metropolitan Region', state: 'Tamil Nadu', district: 'Chennai',
+    facilityCount: 1, confidenceScore: 64, riskLevel: 'Elevated', status: 'Under Investigation', detectedAt: daysAgo(4)
+  },
+  {
+    _id: 'demo-alert-delhi-deng05', type: 'Disease Cluster', condition: 'Dengue Fever',
+    region: 'Delhi Central', state: 'Delhi', district: 'Central Delhi',
+    facilityCount: 2, confidenceScore: 56, riskLevel: 'Elevated', status: 'Resolved', detectedAt: daysAgo(10)
+  }
+];
+
 const AlertCenter = () => {
   const { getAuthHeaders } = useAuth();
   const navigate = useNavigate();
 
-  const [alerts, setAlerts] = useState([]);
-  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [alerts, setAlerts] = useState(FALLBACK_ALERTS);
+  const [selectedAlert, setSelectedAlert] = useState(FALLBACK_ALERTS[0]);
   const [loading, setLoading] = useState(true);
 
-  // Counter summary stats (as in Image 5)
-  const [counts, setCounts] = useState({
-    critical: 3,
-    high: 7,
-    medium: 14,
-    resolved: 32
+  const countAlerts = (list) => ({
+    critical: list.filter(a => a.riskLevel === 'Critical' && a.status !== 'Resolved').length,
+    high: list.filter(a => a.riskLevel === 'High' && a.status !== 'Resolved').length,
+    medium: list.filter(a => a.riskLevel === 'Elevated' && a.status !== 'Resolved').length,
+    resolved: list.filter(a => a.status === 'Resolved').length
   });
+
+  const [counts, setCounts] = useState(countAlerts(FALLBACK_ALERTS));
 
   const fetchAlerts = async () => {
     try {
@@ -25,23 +59,13 @@ const AlertCenter = () => {
         headers: getAuthHeaders()
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.alerts?.length > 0) {
         setAlerts(data.alerts);
-        // Default select the first alert if exists
-        if (data.alerts.length > 0) {
-          setSelectedAlert(data.alerts[0]);
-        }
-        
-        // Sync counts
-        setCounts({
-          critical: data.alerts.filter(a => a.riskLevel === 'Critical' && a.status !== 'Resolved').length || 3,
-          high: data.alerts.filter(a => a.riskLevel === 'High' && a.status !== 'Resolved').length || 7,
-          medium: data.alerts.filter(a => a.riskLevel === 'Elevated' && a.status !== 'Resolved').length || 14,
-          resolved: data.alerts.filter(a => a.status === 'Resolved').length || 32
-        });
+        setSelectedAlert(data.alerts[0]);
+        setCounts(countAlerts(data.alerts));
       }
     } catch (err) {
-      console.error('Error fetching alerts:', err);
+      console.error('Error fetching alerts, using demo dataset:', err);
     } finally {
       setLoading(false);
     }
@@ -51,7 +75,21 @@ const AlertCenter = () => {
     fetchAlerts();
   }, []);
 
+  const applyStatusLocally = (alertId, newStatus) => {
+    const updated = alerts.map(a => a._id === alertId ? { ...a, status: newStatus } : a);
+    setAlerts(updated);
+    setSelectedAlert(prev => (prev && prev._id === alertId ? { ...prev, status: newStatus } : prev));
+    setCounts(countAlerts(updated));
+  };
+
   const handleUpdateStatus = async (alertId, newStatus) => {
+    // Demo/fallback alerts have no backend record — update local state
+    // directly so the UI is responsive even without a live database.
+    if (alertId.startsWith('demo-alert-')) {
+      applyStatusLocally(alertId, newStatus);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/alerts/${alertId}/status`, {
         method: 'PUT',
@@ -60,10 +98,7 @@ const AlertCenter = () => {
       });
       const data = await response.json();
       if (data.success) {
-        // Refresh alert list and sync selection
-        const updated = alerts.map(a => a._id === alertId ? { ...a, status: newStatus } : a);
-        setAlerts(updated);
-        setSelectedAlert({ ...selectedAlert, status: newStatus });
+        applyStatusLocally(alertId, newStatus);
         await fetchAlerts();
       }
     } catch (err) {
@@ -123,6 +158,42 @@ const AlertCenter = () => {
           <div style={{ ...styles.sumVal, color: '#10b981' }}>{counts.resolved}</div>
         </div>
       </div>
+
+      {/* Severity distribution — quick visual proportion of the alert mix */}
+      {(() => {
+        const total = counts.critical + counts.high + counts.medium + counts.resolved;
+        if (total === 0) return null;
+        const seg = [
+          { label: 'Critical', value: counts.critical, color: '#dc2626' },
+          { label: 'High', value: counts.high, color: '#ea580c' },
+          { label: 'Medium', value: counts.medium, color: '#d97706' },
+          { label: 'Resolved', value: counts.resolved, color: '#10b981' }
+        ].filter(s => s.value > 0);
+        return (
+          <div className="glass-card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#789088', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
+              SEVERITY DISTRIBUTION ({total} total signals)
+            </div>
+            <div style={{ display: 'flex', height: '14px', borderRadius: '7px', overflow: 'hidden', border: '1px solid #edf3ef' }}>
+              {seg.map((s) => (
+                <div
+                  key={s.label}
+                  title={`${s.label}: ${s.value}`}
+                  style={{ width: `${(s.value / total) * 100}%`, backgroundColor: s.color }}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              {seg.map((s) => (
+                <span key={s.label} style={{ fontSize: '0.75rem', color: '#4a665e', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: s.color, display: 'inline-block' }} />
+                  {s.label} · {Math.round((s.value / total) * 100)}%
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Split panel layout */}
       <div style={styles.splitLayout}>
