@@ -1,93 +1,135 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, useMap } from 'react-leaflet';
 import { Activity, ShieldAlert, CheckCircle, TrendingUp } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 
-const IndiaMap = ({ hotspots, onSelectState }) => {
+const defaultStates = [
+  { state: 'Maharashtra', city: 'Mumbai', caseCount: 57, riskLevel: 'Critical', activeAlertsCount: 1, lat: 19.75, lng: 75.71 },
+  { state: 'Karnataka', city: 'Hubli', caseCount: 20, riskLevel: 'High', activeAlertsCount: 1, lat: 15.31, lng: 75.71 },
+  { state: 'Delhi', city: 'New Delhi', caseCount: 9, riskLevel: 'Normal', activeAlertsCount: 0, lat: 28.70, lng: 77.10 },
+  { state: 'Gujarat', city: 'Ahmedabad', caseCount: 5, riskLevel: 'Normal', activeAlertsCount: 0, lat: 22.25, lng: 71.19 },
+  { state: 'Rajasthan', city: 'Jaipur', caseCount: 3, riskLevel: 'Normal', activeAlertsCount: 0, lat: 27.02, lng: 74.21 },
+  { state: 'Kerala', city: 'Kochi', caseCount: 12, riskLevel: 'Normal', activeAlertsCount: 0, lat: 10.85, lng: 76.27 },
+  { state: 'Tamil Nadu', city: 'Chennai', caseCount: 8, riskLevel: 'Normal', activeAlertsCount: 0, lat: 11.12, lng: 78.65 }
+];
+
+const getRiskColor = (level) => {
+  switch (level) {
+    case 'Critical': return '#ef4444';
+    case 'High': return '#f97316';
+    case 'Elevated': return '#eab308';
+    default: return '#10b981';
+  }
+};
+
+const MapFocus = ({ center, zoom }) => {
+  const map = useMap();
+  React.useEffect(() => {
+    if (center) map.flyTo(center, zoom || 6, { duration: 0.8 });
+  }, [center, zoom, map]);
+  return null;
+};
+
+const IndiaMap = ({ hotspots = [], onSelectState, mode = 'Clusters' }) => {
   const [activeState, setActiveState] = useState(null);
+  const [focus, setFocus] = useState(null);
 
-  // Fallback states if database doesn't have aggregate cases yet
-  const defaultStates = [
-    { state: 'Maharashtra', city: 'Mumbai', caseCount: 57, riskLevel: 'Critical', activeAlertsCount: 1, lat: 19.75, lng: 75.71, top: '55%', left: '38%' },
-    { state: 'Karnataka', city: 'Hubli', caseCount: 20, riskLevel: 'High', activeAlertsCount: 1, lat: 15.31, lng: 75.71, top: '72%', left: '42%' },
-    { state: 'Delhi', city: 'New Delhi', caseCount: 9, riskLevel: 'Normal', activeAlertsCount: 0, lat: 28.70, lng: 77.10, top: '32%', left: '44%' },
-    { state: 'Gujarat', city: 'Ahmedabad', caseCount: 5, riskLevel: 'Normal', activeAlertsCount: 0, lat: 22.25, lng: 71.19, top: '46%', left: '26%' },
-    { state: 'Rajasthan', city: 'Jaipur', caseCount: 3, riskLevel: 'Normal', activeAlertsCount: 0, lat: 27.02, lng: 74.21, top: '38%', left: '32%' },
-    { state: 'Kerala', city: 'Kochi', caseCount: 12, riskLevel: 'Normal', activeAlertsCount: 0, lat: 10.85, lng: 76.27, top: '84%', left: '45%' },
-    { state: 'Tamil Nadu', city: 'Chennai', caseCount: 8, riskLevel: 'Normal', activeAlertsCount: 0, lat: 11.12, lng: 78.65, top: '80%', left: '52%' }
-  ];
+  const mergedStates = useMemo(() => {
+    return defaultStates.map((def) => {
+      const dbMatch = hotspots.find((h) => h.state?.toLowerCase() === def.state.toLowerCase());
+      if (dbMatch) {
+        return {
+          ...def,
+          caseCount: dbMatch.caseCount,
+          riskLevel: dbMatch.riskLevel,
+          activeAlertsCount: dbMatch.activeAlertsCount,
+          alerts: dbMatch.alerts || []
+        };
+      }
+      return { ...def, alerts: [] };
+    });
+  }, [hotspots]);
 
-  // Merge database hotspots stats with defaults for placement position coordinates
-  const mergedStates = defaultStates.map(def => {
-    const dbMatch = hotspots.find(h => h.state.toLowerCase() === def.state.toLowerCase());
-    if (dbMatch) {
-      return {
-        ...def,
-        caseCount: dbMatch.caseCount,
-        riskLevel: dbMatch.riskLevel,
-        activeAlertsCount: dbMatch.activeAlertsCount,
-        alerts: dbMatch.alerts || []
-      };
-    }
-    return { ...def, alerts: [] };
-  });
-
-  const getRiskColor = (level) => {
-    switch (level) {
-      case 'Critical': return '#ef4444'; // red
-      case 'High': return '#f97316';     // orange
-      case 'Elevated': return '#eab308'; // yellow
-      default: return '#10b981';         // green
-    }
-  };
-
-  const handleStateClick = (stateObj) => {
+  const handleSelect = (stateObj) => {
     setActiveState(stateObj);
-    if (onSelectState) {
-      onSelectState(stateObj.state);
-    }
+    setFocus({ center: [stateObj.lat, stateObj.lng], zoom: 6.5 });
   };
 
   return (
     <div style={styles.container}>
-      {/* Schematic Map Canvas */}
       <div style={styles.mapCanvas}>
-        {/* Simplified outline vector illustration */}
-        <svg viewBox="0 0 400 500" style={styles.svgMap}>
-          {/* Central Border Outline path for India Map Silhouette */}
-          <path
-            d="M175 40 L195 50 L205 70 L210 90 L230 115 L245 130 L270 140 L285 130 L290 145 L275 160 L285 180 L270 205 L260 215 L255 240 L270 260 L290 280 L310 285 L320 300 L290 320 L275 325 L255 330 L245 350 L240 375 L230 400 L210 425 L198 460 L188 475 L180 482 L178 450 L174 425 L182 400 L180 370 L170 350 L165 325 L160 295 L145 285 L135 295 L120 310 L115 280 L118 260 L108 245 L95 242 L72 245 L76 220 L84 200 L95 190 L115 170 L120 150 L135 135 L145 105 L152 75 Z"
-            fill="#172a5a"
-            stroke="rgba(255, 255, 255, 0.05)"
-            strokeWidth="2"
+        <MapContainer
+          center={[22.5, 79.5]}
+          zoom={4.6}
+          minZoom={4}
+          maxZoom={12}
+          scrollWheelZoom
+          style={{ height: '100%', width: '100%', borderRadius: '12px' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
-        </svg>
+          {focus && <MapFocus center={focus.center} zoom={focus.zoom} />}
 
-        {/* Dynamic Coordinate Circle Markers */}
-        {mergedStates.map((st) => (
-          <button
-            key={st.state}
-            onClick={() => handleStateClick(st)}
-            style={{
-              ...styles.marker,
-              top: st.top,
-              left: st.left,
-              backgroundColor: getRiskColor(st.riskLevel),
-              boxShadow: `0 0 12px ${getRiskColor(st.riskLevel)}`,
-            }}
-          >
-            <span style={styles.markerRipple} />
-            {st.activeAlertsCount > 0 && (
-              <span style={styles.alertIndicator}>!</span>
-            )}
-          </button>
-        ))}
+          {mergedStates.map((st) => {
+            const color = getRiskColor(st.riskLevel);
+            const radius = mode === 'Intensity'
+              ? Math.max(8, Math.min(28, 6 + st.caseCount / 3))
+              : st.activeAlertsCount > 0 ? 14 : 10;
+
+            return (
+              <CircleMarker
+                key={st.state}
+                center={[st.lat, st.lng]}
+                pathOptions={{
+                  color: '#ffffff',
+                  weight: 2,
+                  fillColor: color,
+                  fillOpacity: 0.85
+                }}
+                radius={radius}
+                eventHandlers={{ click: () => handleSelect(st) }}
+              >
+                <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
+                  <strong>{st.state}</strong> · {st.caseCount} cases
+                </Tooltip>
+                <Popup>
+                  <div style={{ minWidth: 160 }}>
+                    <strong style={{ color: '#1b332a' }}>{st.state}</strong>
+                    <div style={{ fontSize: 12, color: '#4a665e', marginTop: 4 }}>
+                      {st.city} · {st.riskLevel} risk
+                    </div>
+                    <div style={{ fontSize: 12, marginTop: 6 }}>
+                      Cases: <strong>{st.caseCount}</strong> · Alerts: <strong>{st.activeAlertsCount}</strong>
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            );
+          })}
+        </MapContainer>
+
+        <div style={styles.legend}>
+          <span style={styles.legendTitle}>Risk</span>
+          {[
+            { label: 'Critical', color: '#ef4444' },
+            { label: 'High', color: '#f97316' },
+            { label: 'Normal', color: '#10b981' }
+          ].map((item) => (
+            <span key={item.label} style={styles.legendItem}>
+              <span style={{ ...styles.legendDot, backgroundColor: item.color }} />
+              {item.label}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Side Details Overlay */}
       <div style={styles.detailsPanel}>
         {activeState ? (
           <div>
             <div style={styles.panelHeader}>
-              <h3 style={{ margin: 0 }}>{activeState.state}</h3>
+              <h3 style={{ margin: 0, color: '#1b332a' }}>{activeState.state}</h3>
               <span
                 style={{
                   ...styles.statusText,
@@ -99,7 +141,7 @@ const IndiaMap = ({ hotspots, onSelectState }) => {
                 {activeState.riskLevel} Risk
               </span>
             </div>
-            
+
             <div style={styles.statRow}>
               <div style={styles.statBox}>
                 <div style={styles.statVal}>{activeState.caseCount}</div>
@@ -112,48 +154,55 @@ const IndiaMap = ({ hotspots, onSelectState }) => {
             </div>
 
             <div style={styles.alertSection}>
-              <h4>Active Signals</h4>
+              <h4 style={styles.sectionLabel}>Active Signals</h4>
               {activeState.activeAlertsCount === 0 ? (
                 <div style={styles.emptyAlerts}>
                   <CheckCircle size={16} color="#10b981" />
-                  <span style={{ color: '#94a3b8' }}>No emerging signals in region</span>
+                  <span style={{ color: '#4a665e' }}>No emerging signals in region</span>
                 </div>
               ) : (
-                <div style={styles.alertList}>
-                  <div style={{
-                    ...styles.alertItem,
-                    borderLeftColor: getRiskColor(activeState.riskLevel)
-                  }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      <ShieldAlert size={16} color={getRiskColor(activeState.riskLevel)} />
-                      <span style={{ fontWeight: '600', fontSize: '0.85rem' }}>
-                        {activeState.state === 'Maharashtra' ? 'Influenza Outbreak' : 'E. coli Resistance'}
-                      </span>
-                    </div>
-                    <p style={styles.alertText}>
-                      {activeState.state === 'Maharashtra' 
-                        ? 'Rapid clinical spike reported across 4 clinics in Mumbai Metropolitan.'
-                        : '66% Ciprofloxacin resistance rate detected in urine culture isolates.'}
-                    </p>
+                <div style={styles.alertItem}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <ShieldAlert size={16} color={getRiskColor(activeState.riskLevel)} />
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1b332a' }}>
+                      {activeState.state === 'Maharashtra' ? 'Influenza Outbreak' : 'E. coli Resistance'}
+                    </span>
                   </div>
+                  <p style={styles.alertText}>
+                    {activeState.state === 'Maharashtra'
+                      ? 'Rapid clinical spike reported across 4 clinics in Mumbai Metropolitan.'
+                      : 'Elevated resistance rate detected in urine culture isolates.'}
+                  </p>
                 </div>
               )}
             </div>
 
             <div style={styles.facilitiesInfo}>
-              <h4>Participating Clinics</h4>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+              <h4 style={styles.sectionLabel}>Participating Clinics</h4>
+              <p style={{ fontSize: '0.8rem', color: '#4a665e', margin: 0 }}>
                 {activeState.state === 'Maharashtra' && 'Sunrise Clinic, Bandra Dispensary, Mumbai General, Andheri Lab'}
                 {activeState.state === 'Karnataka' && 'Hubli Health Clinic, Belagavi Dispensary, Karnataka Apex Lab'}
-                {['Delhi', 'Gujarat', 'Rajasthan', 'Kerala', 'Tamil Nadu'].includes(activeState.state) && 'Reporting active surveillance data to national pipeline.'}
+                {['Delhi', 'Gujarat', 'Rajasthan', 'Kerala', 'Tamil Nadu'].includes(activeState.state) &&
+                  'Reporting active surveillance data to national pipeline.'}
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => onSelectState?.(activeState.state)}
+              style={styles.inspectBtn}
+            >
+              <Activity size={14} />
+              Inspect Geographic Cluster
+            </button>
           </div>
         ) : (
           <div style={styles.emptyState}>
-            <TrendingUp size={36} color="#64748b" style={{ marginBottom: '1rem' }} />
-            <h3>Select a Region</h3>
-            <p>Click any hotspot marker on the India map to inspect regional caseloads, trends, and active outbreak signals.</p>
+            <TrendingUp size={36} color="#789088" style={{ marginBottom: '1rem' }} />
+            <h3 style={{ color: '#1b332a', marginBottom: '0.35rem' }}>Select a Region</h3>
+            <p>
+              Click any hotspot on the live India map to inspect regional caseloads, trends, and active outbreak signals.
+            </p>
           </div>
         )}
       </div>
@@ -171,60 +220,49 @@ const styles = {
   mapCanvas: {
     flex: '1.2',
     position: 'relative',
-    backgroundColor: '#101f42',
     borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    border: '1px solid #d1dfd6',
     overflow: 'hidden',
+    minHeight: 0
+  },
+  legend: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    zIndex: 500,
+    background: 'rgba(255,255,255,0.95)',
+    border: '1px solid #d1dfd6',
+    borderRadius: 8,
+    padding: '0.5rem 0.75rem',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1rem'
+    gap: '0.65rem',
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    color: '#4a665e',
+    boxShadow: '0 4px 10px rgba(16,40,24,0.08)'
   },
-  svgMap: {
-    height: '95%',
-    width: 'auto',
-    opacity: 0.85
+  legendTitle: {
+    fontWeight: 800,
+    color: '#1b332a',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em'
   },
-  marker: {
-    position: 'absolute',
-    width: '16px',
-    height: '16px',
-    borderRadius: '50%',
-    border: '2px solid #ffffff',
-    cursor: 'pointer',
-    transform: 'translate(-50%, -50%)',
-    zIndex: 10,
-    display: 'flex',
+  legendItem: {
+    display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s',
-    outline: 'none',
-    ':hover': {
-      transform: 'translate(-50%, -50%) scale(1.2)'
-    }
+    gap: 4
   },
-  markerRipple: {
-    position: 'absolute',
-    top: '-4px',
-    left: '-4px',
-    right: '-4px',
-    bottom: '-4px',
-    borderRadius: '50%',
-    border: '1px solid inherit',
-    animation: 'ripple 1.5s infinite ease-in-out',
-    opacity: 0.5
-  },
-  alertIndicator: {
-    color: '#ffffff',
-    fontSize: '10px',
-    fontWeight: '800',
-    lineHeight: 1
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%'
   },
   detailsPanel: {
     flex: '0.8',
-    backgroundColor: '#101f42',
+    backgroundColor: '#ffffff',
     borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    border: '1px solid #d1dfd6',
     padding: '1.5rem',
     overflowY: 'auto'
   },
@@ -232,15 +270,15 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    borderBottom: '1px solid #edf3ef',
     paddingBottom: '0.75rem',
     marginBottom: '1rem'
   },
   statusText: {
     fontSize: '0.75rem',
-    fontWeight: '700',
+    fontWeight: 700,
     padding: '0.15rem 0.5rem',
-    borderRadius: '4px',
+    borderRadius: 4,
     border: '1px solid'
   },
   statRow: {
@@ -250,66 +288,72 @@ const styles = {
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#172a5a',
-    borderRadius: '6px',
+    backgroundColor: '#f4f8f5',
+    borderRadius: 6,
     padding: '0.75rem',
     textAlign: 'center',
-    border: '1px solid rgba(255, 255, 255, 0.04)'
+    border: '1px solid #d1dfd6'
   },
   statVal: {
     fontSize: '1.5rem',
-    fontWeight: '800',
-    color: '#06b6d4',
-    lineHeight: '1.2'
+    fontWeight: 800,
+    color: '#0f766e',
+    lineHeight: 1.2
   },
   statLbl: {
     fontSize: '0.7rem',
-    color: '#94a3b8',
+    color: '#789088',
     marginTop: '0.15rem'
   },
   alertSection: {
-    marginBottom: '1rem',
-    h4: {
-      fontSize: '0.85rem',
-      color: '#94a3b8',
-      marginBottom: '0.5rem'
-    }
+    marginBottom: '1rem'
+  },
+  sectionLabel: {
+    fontSize: '0.8rem',
+    color: '#789088',
+    marginBottom: '0.5rem',
+    fontWeight: 700
   },
   emptyAlerts: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
     fontSize: '0.8rem',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
     padding: '0.5rem',
-    borderRadius: '6px'
-  },
-  alertList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem'
+    borderRadius: 6
   },
   alertItem: {
-    backgroundColor: '#172a5a',
-    borderLeft: '4px solid',
-    borderRadius: '4px',
+    backgroundColor: '#f4f8f5',
+    borderLeft: '4px solid #f97316',
+    borderRadius: 4,
     padding: '0.625rem',
-    fontSize: '0.8rem'
+    fontSize: '0.8rem',
+    border: '1px solid #d1dfd6'
   },
   alertText: {
-    color: '#cbd5e1',
-    lineHeight: '1.4',
+    color: '#4a665e',
+    lineHeight: 1.4,
     margin: 0
   },
   facilitiesInfo: {
     fontSize: '0.8rem',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    borderTop: '1px solid #edf3ef',
     paddingTop: '0.75rem',
-    h4: {
-      fontSize: '0.85rem',
-      color: '#94a3b8',
-      marginBottom: '0.25rem'
-    }
+    marginBottom: '1rem'
+  },
+  inspectBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    border: 'none',
+    backgroundColor: '#0f766e',
+    color: '#fff',
+    borderRadius: 6,
+    padding: '0.55rem 0.85rem',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    cursor: 'pointer'
   },
   emptyState: {
     display: 'flex',
@@ -318,13 +362,9 @@ const styles = {
     justifyContent: 'center',
     height: '100%',
     textAlign: 'center',
-    color: '#94a3b8',
-    p: {
-      fontSize: '0.8rem',
-      lineHeight: '1.5',
-      marginTop: '0.5rem',
-      maxWidth: '220px'
-    }
+    color: '#789088',
+    fontSize: '0.8rem',
+    lineHeight: 1.5
   }
 };
 

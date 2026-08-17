@@ -256,3 +256,34 @@ a:hover {
 .clinical-workspace {
   background-color: #edf3ef;
 }
+
+/* Leaflet map polish */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #e8f0ea;
+  z-index: 1;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+}
+
+.leaflet-popup-content {
+  margin: 0.65rem 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .profile-responsive-layout,
+  .map-responsive-row {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+

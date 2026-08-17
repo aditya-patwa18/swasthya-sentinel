@@ -97,7 +97,18 @@ const Navbar = ({ toggleSidebar }) => {
           </div>
 
           {/* User Profile Summary */}
-          <div style={styles.profileSection} onClick={() => navigate(`/${user.role}/profile` || '/profile')}>
+          <div
+            style={styles.profileSection}
+            onClick={() => {
+              const profilePath =
+                user.role === 'admin'
+                  ? '/admin/profile'
+                  : user.role === 'doctor'
+                    ? '/doctor/profile'
+                    : '/surveillance/profile';
+              navigate(profilePath);
+            }}
+          >
             <div style={styles.avatar}>
               <User size={16} />
             </div>
