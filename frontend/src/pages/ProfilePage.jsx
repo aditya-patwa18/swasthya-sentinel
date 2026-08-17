@@ -8,6 +8,7 @@ import {
 const roleLabel = (role) => {
   switch (role) {
     case 'doctor': return 'Clinician';
+    case 'lab': return 'Lab Technician';
     case 'authority': return 'Chief Epidemiologist';
     case 'admin': return 'System Administrator';
     default: return role;
@@ -15,7 +16,7 @@ const roleLabel = (role) => {
 };
 
 const orgLabel = (user) => {
-  if (user.role === 'doctor' && user.facility?.name) return user.facility.name;
+  if ((user.role === 'doctor' || user.role === 'lab') && user.facility?.name) return user.facility.name;
   if (user.role === 'authority') return 'National Health Authority';
   if (user.role === 'admin') return 'Swasthya Sentinel Ops';
   return 'Swasthya Sentinel Network';
@@ -23,7 +24,7 @@ const orgLabel = (user) => {
 
 const professionalId = (user) => {
   const seed = (user._id || user.email || 'MED00000').toString().slice(-5).toUpperCase();
-  const prefix = user.role === 'doctor' ? 'MED' : user.role === 'admin' ? 'ADM' : 'SRV';
+  const prefix = user.role === 'doctor' ? 'MED' : user.role === 'lab' ? 'LAB' : user.role === 'admin' ? 'ADM' : 'SRV';
   return `${prefix}-${seed}`;
 };
 
@@ -46,10 +47,19 @@ const accessMatrixForRole = (role) => {
       { module: 'AMR Analytics', level: 'Restricted', tone: 'restricted' }
     ];
   }
+  if (role === 'lab') {
+    return [
+      { module: 'Patient Records', level: 'Restricted', tone: 'restricted' },
+      { module: 'Facility Analytics', level: 'Restricted', tone: 'restricted' },
+      { module: 'National Surveillance', level: 'Restricted', tone: 'restricted' },
+      { module: 'Alert Management', level: 'Restricted', tone: 'restricted' },
+      { module: 'AMR Analytics', level: 'Clinical Access', tone: 'clinical' }
+    ];
+  }
   return [
     { module: 'Patient Records', level: 'Clinical Access', tone: 'clinical' },
     { module: 'Facility Analytics', level: 'View Only', tone: 'view' },
-    { module: 'National Surveillance', level: 'View Only', tone: 'view' },
+    { module: 'National Surveillance', level: 'Restricted', tone: 'restricted' },
     { module: 'Alert Management', level: 'Restricted', tone: 'restricted' },
     { module: 'AMR Analytics', level: 'View Only', tone: 'view' }
   ];

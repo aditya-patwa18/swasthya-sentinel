@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['doctor', 'authority', 'admin'],
+    enum: ['doctor', 'lab', 'authority', 'admin'],
     required: [true, 'Please select a role']
   },
   phone: {
@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
   facility: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Facility',
-    required: function() { return this.role === 'doctor'; }
+    required: function() { return this.role === 'doctor' || this.role === 'lab'; }
   },
   department: {
     type: String,

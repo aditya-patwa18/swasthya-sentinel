@@ -18,6 +18,10 @@ import ReportForm from './pages/doctor/ReportForm';
 import ReportHistory from './pages/doctor/ReportHistory';
 import FacilitySignals from './pages/doctor/FacilitySignals';
 
+// Lab Pages
+import LabDashboard from './pages/lab/LabDashboard';
+import LabReportForm from './pages/lab/LabReportForm';
+
 // Surveillance Pages
 import SurveillanceDashboard from './pages/surveillance/SurveillanceDashboard';
 import NationalStatistics from './pages/surveillance/NationalStatistics';
@@ -73,8 +77,11 @@ const AppLayout = () => {
     );
   }
 
-  // Permissive role array to enable smooth transitions during live evaluations
-  const allRoles = ['doctor', 'authority', 'admin'];
+  // Surveillance Center is restricted to health authorities and admins —
+  // doctors and lab technicians only see their own clinical workspace.
+  const surveillanceRoles = ['authority', 'admin'];
+  const clinicalRoles = ['doctor', 'authority', 'admin'];
+  const labRoles = ['lab', 'authority', 'admin'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -88,76 +95,93 @@ const AppLayout = () => {
           backgroundColor: '#edf3ef' 
         }}>
           <Routes>
-            {/* Clinical Workspace Routes */}
+            {/* Clinical Workspace Routes (doctor only, + authority/admin oversight) */}
             <Route path="/doctor" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={clinicalRoles}>
                 <DoctorDashboard />
               </ProtectedRoute>
             } />
             <Route path="/doctor/submit" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={clinicalRoles}>
                 <ReportForm />
               </ProtectedRoute>
             } />
             <Route path="/doctor/records" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={clinicalRoles}>
                 <ReportHistory />
               </ProtectedRoute>
             } />
             <Route path="/doctor/signals" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={clinicalRoles}>
                 <FacilitySignals />
               </ProtectedRoute>
             } />
             <Route path="/doctor/profile" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={clinicalRoles}>
                 <ProfilePage />
               </ProtectedRoute>
             } />
 
-            {/* Surveillance Center Routes */}
+            {/* Lab Workspace Routes (lab only, + authority/admin oversight) */}
+            <Route path="/lab" element={
+              <ProtectedRoute allowedRoles={labRoles}>
+                <LabDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/lab/submit" element={
+              <ProtectedRoute allowedRoles={labRoles}>
+                <LabReportForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/lab/profile" element={
+              <ProtectedRoute allowedRoles={labRoles}>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+
+            {/* Surveillance Center Routes (health authorities & admins only) */}
             <Route path="/surveillance" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <SurveillanceDashboard />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/trends" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <DiseaseTrends />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/statistics" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <NationalStatistics />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/clusters" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <GeographicClusters />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/amr" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <AMRWatch />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/alerts" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <AlertCenter />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/alerts/:id" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <InvestigationDetail />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/facilities" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <FacilityDetail />
               </ProtectedRoute>
             } />
             <Route path="/surveillance/profile" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={surveillanceRoles}>
                 <ProfilePage />
               </ProtectedRoute>
             } />
@@ -179,12 +203,12 @@ const AppLayout = () => {
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
-              <ProtectedRoute allowedRoles={allRoles}>
+              <ProtectedRoute allowedRoles={['doctor', 'lab', 'authority', 'admin']}>
                 <ProfilePage />
               </ProtectedRoute>
             } />
 
-            <Route path="*" element={<Navigate to="/doctor" replace />} />
+            <Route path="*" element={<Navigate to={user.role === 'lab' ? '/lab' : user.role === 'authority' ? '/surveillance' : user.role === 'admin' ? '/admin' : '/doctor'} replace />} />
           </Routes>
         </main>
       </div>

@@ -3,20 +3,20 @@ const Facility = require('../models/Facility');
 const { runSurveillance } = require('../services/surveillanceService');
 const Notification = require('../models/Notification');
 
-// @desc    Create a clinical report
+// @desc    Create a clinical or lab (AMR) report
 // @route   POST /api/reports
-// @access  Private (Doctor only)
+// @access  Private (Doctor, Lab)
 exports.createReport = async (req, res) => {
   try {
-    const doctor = req.user;
-    if (doctor.role !== 'doctor') {
-      return res.status(403).json({ success: false, error: 'Only doctors can submit clinical reports' });
+    const submitter = req.user;
+    if (submitter.role !== 'doctor' && submitter.role !== 'lab') {
+      return res.status(403).json({ success: false, error: 'Only doctors and lab technicians can submit reports' });
     }
 
-    // Get doctor's facility to capture locations automatically
-    const facility = await Facility.findById(doctor.facility);
+    // Get submitter's facility to capture locations automatically
+    const facility = await Facility.findById(submitter.facility);
     if (!facility) {
-      return res.status(404).json({ success: false, error: 'Doctor facility not found' });
+      return res.status(404).json({ success: false, error: 'Facility not found for this account' });
     }
 
     const {
@@ -43,7 +43,7 @@ exports.createReport = async (req, res) => {
     } = req.body;
 
     const report = new ClinicalReport({
-      reportingDoctor: doctor._id,
+      reportingDoctor: submitter._id,
       facility: facility._id,
       department,
       chiefComplaint,
@@ -106,8 +106,8 @@ exports.getReports = async (req, res) => {
     let query = {};
 
     // Role-based restrictions
-    if (req.user.role === 'doctor') {
-      // Doctors see only reports they submitted
+    if (req.user.role === 'doctor' || req.user.role === 'lab') {
+      // Doctors/labs see only reports they submitted
       query.reportingDoctor = req.user._id;
     }
 
@@ -150,8 +150,8 @@ exports.getReportById = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Clinical report not found' });
     }
 
-    // Security check: doctors can only view their own reports
-    if (req.user.role === 'doctor' && report.reportingDoctor._id.toString() !== req.user._id.toString()) {
+    // Security check: doctors/labs can only view their own reports
+    if ((req.user.role === 'doctor' || req.user.role === 'lab') && report.reportingDoctor._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, error: 'Unauthorized to view this report' });
     }
 

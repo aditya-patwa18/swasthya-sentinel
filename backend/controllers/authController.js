@@ -20,11 +20,11 @@ exports.registerUser = async (req, res) => {
       return res.status(403).json({ success: false, error: 'Admin accounts cannot be publicly registered' });
     }
 
-    // Facility validation for doctor role
+    // Facility validation for doctor/lab roles
     let linkedFacility = null;
-    if (role === 'doctor') {
+    if (role === 'doctor' || role === 'lab') {
       if (!facility) {
-        return res.status(400).json({ success: false, error: 'Doctors must select a facility' });
+        return res.status(400).json({ success: false, error: 'Doctors and lab technicians must select a facility' });
       }
       const fac = await Facility.findById(facility);
       if (!fac) {
@@ -41,7 +41,7 @@ exports.registerUser = async (req, res) => {
       role,
       phone,
       facility: linkedFacility,
-      department: role === 'doctor' ? department : undefined,
+      department: (role === 'doctor' || role === 'lab') ? department : undefined,
       city,
       state
     });
@@ -144,7 +144,7 @@ exports.updateProfile = async (req, res) => {
     user.city = city || user.city;
     user.state = state || user.state;
     
-    if (user.role === 'doctor') {
+    if (user.role === 'doctor' || user.role === 'lab') {
       user.department = department || user.department;
     }
 
