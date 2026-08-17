@@ -3,10 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FlaskConical, PlusCircle, ShieldAlert } from 'lucide-react';
 
+// Fallback culture/AMR report log, used whenever the backend/database isn't
+// reachable (offline demo login, unseeded DB). Mirrors the lab panel seeded
+// for Karnataka Apex Lab so the demo account sees a consistent story.
+const daysAgo = (d) => new Date(Date.now() - d * 24 * 60 * 60 * 1000).toISOString();
+const FALLBACK_REPORTS = [
+  { _id: 'demo-r1', reportDate: daysAgo(1), pathogen: 'Salmonella Typhi', testName: 'Culture & Sensitivity', antibioticName: 'Ciprofloxacin', resistance: 'Resistant', labPerformed: true },
+  { _id: 'demo-r2', reportDate: daysAgo(2), pathogen: 'Pseudomonas aeruginosa', testName: 'Culture & Sensitivity', antibioticName: 'Ceftazidime', resistance: 'Resistant', labPerformed: true },
+  { _id: 'demo-r3', reportDate: daysAgo(3), pathogen: 'Staphylococcus aureus', testName: 'Culture & Sensitivity', antibioticName: 'Ciprofloxacin', resistance: 'Susceptible', labPerformed: true },
+  { _id: 'demo-r4', reportDate: daysAgo(4), pathogen: 'Staphylococcus aureus', testName: 'Culture & Sensitivity', antibioticName: 'Amoxicillin', resistance: 'Resistant', labPerformed: true },
+  { _id: 'demo-r5', reportDate: daysAgo(5), pathogen: 'Acinetobacter baumannii', testName: 'Culture & Sensitivity', antibioticName: 'Meropenem', resistance: 'Resistant', labPerformed: true },
+  { _id: 'demo-r6', reportDate: daysAgo(6), pathogen: 'Klebsiella pneumoniae', testName: 'Culture & Sensitivity', antibioticName: 'Meropenem', resistance: 'Susceptible', labPerformed: true },
+  { _id: 'demo-r7', reportDate: daysAgo(7), pathogen: 'Klebsiella pneumoniae', testName: 'Culture & Sensitivity', antibioticName: 'Ceftriaxone', resistance: 'Resistant', labPerformed: true },
+  { _id: 'demo-r8', reportDate: daysAgo(8), pathogen: 'E. coli', testName: 'Urine Culture & Sensitivity', antibioticName: 'Ciprofloxacin', resistance: 'Resistant', labPerformed: true }
+];
+
 const LabDashboard = () => {
   const { user, getAuthHeaders } = useAuth();
   const navigate = useNavigate();
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState(FALLBACK_REPORTS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,9 +29,9 @@ const LabDashboard = () => {
       try {
         const res = await fetch('/api/reports', { headers: getAuthHeaders() });
         const data = await res.json();
-        if (data.success) setReports(data.reports);
+        if (data.success && data.reports?.length > 0) setReports(data.reports);
       } catch (err) {
-        console.error('Error fetching lab reports:', err);
+        console.error('Error fetching lab reports, using demo dataset:', err);
       } finally {
         setLoading(false);
       }
